@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Comprime presentaciones PowerPoint convirtiendo las fotos PNG a JPG. Todo se procesa en tu equipo, el archivo no se sube a ningún servidor.">
+<meta name="theme-color" content="#e8660e">
+<title>Compresor de PowerPoint</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗜️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --bg:#f3f1ec; --panel:#ffffff; --ink:#1d2125; --muted:#6b7177; --line:#dcd8cf;
+  --accent:#e8660e; --accent-ink:#ffffff; --ok:#2f7d4f; --warn:#b5651d; --track:#e9e5dc;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#16191c; --panel:#1f2327; --ink:#eceae5; --muted:#9aa0a6; --line:#33383d;
+    --accent:#ff7a1f; --accent-ink:#16191c; --ok:#5cc58a; --warn:#e8a25c; --track:#2b3035;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+header{border-bottom:3px solid var(--ink);padding-bottom:12px;margin-bottom:20px}
+.tag{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+h1{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:700;font-size:clamp(34px,8vw,52px);line-height:.95;margin:6px 0 6px;text-transform:uppercase;letter-spacing:.01em}
+h1 span{color:var(--accent)}
+.lead{color:var(--muted);margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.step{display:flex;gap:10px;align-items:baseline;margin:0 0 10px}
+.step b{font-family:"Barlow Condensed",sans-serif;font-size:22px;color:var(--accent);min-width:22px}
+.step h2{font-family:"Barlow Condensed",sans-serif;font-size:22px;margin:0;text-transform:uppercase;letter-spacing:.02em}
+.drop{display:block;border:2px dashed var(--line);border-radius:8px;padding:22px 14px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.drop strong{display:block;font-size:17px}
+.drop small{color:var(--muted)}
+.drop input{display:none}
+.fname{font-family:"JetBrains Mono",monospace;font-size:13px;margin-top:10px;word-break:break-all}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row label{flex:1}
+.row small{display:block;color:var(--muted);font-size:13px}
+.val{font-family:"JetBrains Mono",monospace;font-size:14px;min-width:56px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 0}
+select{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.sw{position:relative;width:46px;height:26px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:var(--track);border-radius:26px;transition:.15s}
+.sw span::after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw input:checked+span{background:var(--accent)}
+.sw input:checked+span::after{transform:translateX(20px)}
+button{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.04em;width:100%;padding:14px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+.bar{height:8px;background:var(--track);border-radius:8px;overflow:hidden;margin:12px 0 6px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.status{font-size:14px;color:var(--muted);min-height:20px}
+.big{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;text-align:center;margin:6px 0 14px}
+.big div span{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.big div strong{font-family:"Barlow Condensed",sans-serif;font-size:32px}
+.big .arrow{font-size:24px;color:var(--muted);padding-bottom:6px}
+.saving{text-align:center;font-family:"Barlow Condensed",sans-serif;font-size:44px;color:var(--ok);line-height:1;margin-bottom:4px}
+.saving small{display:block;font-family:"Barlow",sans-serif;font-size:14px;color:var(--muted)}
+.tbl{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:460px}
+th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:"Barlow Condensed",sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+td.n{font-family:"JetBrains Mono",monospace;text-align:right}
+.pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600}
+.p-ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.p-skip{background:var(--track);color:var(--muted)}
+.p-warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.hidden{display:none}
+.err{color:#c0392b;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">Herramienta · sin instalar · todo local</div>
+    <h1>Compresor de <span>PowerPoint</span></h1>
+    <p class="lead">Convierte las fotos PNG a JPG y las comprime para bajarle el peso al .pptx. El archivo no sale de tu equipo.</p>
+  </header>
+
+  <section class="card">
+    <div class="step"><b>1</b><h2>Elige el archivo</h2></div>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+      <strong>Toca para elegir un .pptx</strong>
+      <small>o arrástralo aquí</small>
+    </label>
+    <div class="fname" id="fname"></div>
+  </section>
+
+  <section class="card">
+    <div class="step"><b>2</b><h2>Ajustes</h2></div>
+    <div class="row">
+      <label for="q">Calidad JPG<small>75 se ve igual en pantalla y baja harto el peso</small>
+        <input type="range" id="q" min="40" max="95" step="5" value="75"></label>
+      <div class="val" id="qv">75</div>
+    </div>
+    <div class="row">
+      <label for="maxd">Tamaño máximo de foto<small>Lado más largo. 1920 px sobra para proyectar</small></label>
+      <select id="maxd">
+        <option value="0">Sin cambiar</option>
+        <option value="2560">2560 px</option>
+        <option value="1920" selected>1920 px</option>
+        <option value="1600">1600 px</option>
+        <option value="1280">1280 px</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="png">Convertir PNG a JPG<small>Cambia el formato y actualiza las referencias</small></label>
+      <span class="sw"><input type="checkbox" id="png" checked><span></span></span>
+    </div>
+    <div class="row">
+      <label for="jpg">Recomprimir los JPG existentes<small>Solo se reemplaza si queda más liviano</small></label>
+      <span class="sw"><input type="checkbox" id="jpg" checked><span></span></span>
+    </div>
+    <div class="row">
+      <label for="alpha">Respetar PNG con transparencia<small>Logos e íconos con fondo transparente no se tocan</small></label>
+      <span class="sw"><input type="checkbox" id="alpha" checked><span></span></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step"><b>3</b><h2>Comprimir</h2></div>
+    <button id="go" disabled>Comprimir PowerPoint</button>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="status" id="status">Elige un archivo para empezar.</div>
+  </section>
+
+  <section class="card hidden" id="result">
+    <div class="step"><b>4</b><h2>Resultado</h2></div>
+    <div class="saving" id="saving"></div>
+    <div class="big">
+      <div><span>Antes</span><strong id="before"></strong></div>
+      <div class="arrow">→</div>
+      <div><span>Después</span><strong id="after"></strong></div>
+    </div>
+    <button id="dl">Descargar .pptx comprimido</button>
+    <div class="status" id="dlstatus"></div>
+    <div class="tbl"><table>
+      <thead><tr><th>Imagen</th><th>Acción</th><th style="text-align:right">Antes</th><th style="text-align:right">Después</th></tr></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+    <p class="note">Abre el archivo nuevo y revísalo antes de borrar el original.</p>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  let file = null, outBlob = null, outName = '';
+
+  const fmt = b => b >= 1048576 ? (b/1048576).toFixed(2).replace('.',',')+' MB' : (b/1024).toFixed(0)+' KB';
+  const escHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  $('q').addEventListener('input', e => $('qv').textContent = e.target.value);
+
+  function setFile(f){
+    if(!f) return;
+    if(!/\.pptx$/i.test(f.name)){ $('fname').innerHTML = '<span class="err">Tiene que ser un archivo .pptx</span>'; $('go').disabled = true; return; }
+    file = f; $('fname').textContent = f.name + ' · ' + fmt(f.size);
+    $('go').disabled = false; $('status').textContent = 'Listo para comprimir.';
+    $('result').classList.add('hidden');
+  }
+  $('file').addEventListener('change', e => setFile(e.target.files[0]));
+  const drop = $('drop');
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => setFile(e.dataTransfer.files[0]));
+
+  function hasAlpha(bmp){
+    const s = Math.min(1, 256/Math.max(bmp.width,bmp.height));
+    const w = Math.max(1,Math.round(bmp.width*s)), h = Math.max(1,Math.round(bmp.height*s));
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const x = c.getContext('2d'); x.drawImage(bmp,0,0,w,h);
+    const d = x.getImageData(0,0,w,h).data;
+    for(let i=3;i<d.length;i+=4) if(d[i]<250) return true;
+    return false;
+  }
+  function toJpeg(bmp, maxd, q){
+    let w = bmp.width, h = bmp.height;
+    if(maxd && Math.max(w,h) > maxd){ const s = maxd/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const x = c.getContext('2d'); x.fillStyle='#ffffff'; x.fillRect(0,0,w,h);
+    x.imageSmoothingQuality='high'; x.drawImage(bmp,0,0,w,h);
+    return new Promise((res,rej)=>c.toBlob(b=>{ c.width=c.height=0; b?res(b):rej(new Error('No se pudo convertir')); },'image/jpeg',q/100));
+  }
+
+  $('go').addEventListener('click', async () => {
+    if(!file) return;
+    if(typeof JSZip === 'undefined'){ $('status').innerHTML = '<span class="err">No se pudo cargar la librería. Revisa tu conexión a internet y recarga la página.</span>'; return; }
+    $('go').disabled = true; $('result').classList.add('hidden'); $('tb').innerHTML='';
+    const q = +$('q').value, maxd = +$('maxd').value, doPng = $('png').checked, doJpg = $('jpg').checked, keepAlpha = $('alpha').checked;
+    try{
+      $('status').textContent = 'Abriendo presentación…';
+      const zip = await JSZip.loadAsync(file);
+      const media = Object.keys(zip.files).filter(n => /^ppt\/media\/[^/]+\.(png|jpe?g)$/i.test(n));
+      const renames = {}; const rows = [];
+      for(let i=0;i<media.length;i++){
+        const path = media[i], base = path.split('/').pop(), isPng = /\.png$/i.test(path);
+        $('status').textContent = `Procesando imagen ${i+1} de ${media.length}: ${base}`;
+        $('bar').style.width = ((i/media.length)*90)+'%';
+        const orig = await zip.file(path).async('blob');
+        let action='', after=orig.size, cls='p-skip';
+        if((isPng && !doPng) || (!isPng && !doJpg)){ action = 'Sin cambio'; }
+        else {
+          let bmp;
+          try{ bmp = await createImageBitmap(orig); }catch(e){ bmp = null; }
+          if(!bmp){ action='No se pudo leer'; cls='p-warn'; }
+          else if(isPng && keepAlpha && hasAlpha(bmp)){ action='Transparente, se mantiene'; cls='p-warn'; bmp.close&&bmp.close(); }
+          else{
+            const jpg = await toJpeg(bmp, maxd, q); bmp.close&&bmp.close();
+            if(jpg.size < orig.size){
+              if(isPng){
+                let np = path.replace(/\.png$/i,'.jpg'), k=1;
+                while(zip.file(np) || Object.values(renames).includes(np)) np = path.replace(/\.png$/i,`_${k++}.jpg`);
+                zip.remove(path); zip.file(np, jpg); renames[path]=np; action='PNG → JPG';
+              } else { zip.file(path, jpg); action='JPG recomprimido'; }
+              after = jpg.size; cls='p-ok';
+            } else action='Ya estaba liviana';
+          }
+        }
+        rows.push({base, action, cls, before:orig.size, after});
+        await new Promise(r=>setTimeout(r,0));
+      }
+      // Actualizar referencias en todos los .rels
+      if(Object.keys(renames).length){
+        $('status').textContent = 'Actualizando referencias…';
+        const rels = Object.keys(zip.files).filter(n => /\.rels$/i.test(n));
+        for(const r of rels){
+          let x = await zip.file(r).async('string'), changed=false;
+          for(const [oldP,newP] of Object.entries(renames)){
+            const ob = oldP.split('/').pop(), nb = newP.split('/').pop();
+            const re = new RegExp('(Target="[^"]*media/)'+escRe(ob)+'"','g');
+            if(re.test(x)){ x = x.replace(re, '$1'+nb+'"'); changed=true; }
+          }
+          if(changed) zip.file(r, x);
+        }
+        let ct = await zip.file('[Content_Types].xml').async('string');
+        if(!/Extension="jpg"/i.test(ct)) ct = ct.replace(/<Types([^>]*)>/, '<Types$1><Default Extension="jpg" ContentType="image/jpeg"/>');
+        for(const [oldP,newP] of Object.entries(renames)){
+          ct = ct.replace(new RegExp('PartName="/'+escRe(oldP)+'"([^>]*)ContentType="image/png"','g'), 'PartName="/'+newP+'"$1ContentType="image/jpeg"');
+        }
+        zip.file('[Content_Types].xml', ct);
+      }
+      $('status').textContent = 'Armando el archivo nuevo…'; $('bar').style.width='95%';
+      outBlob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6},
+        mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+      outName = file.name.replace(/\.pptx$/i,'') + '_comprimido.pptx';
+      $('bar').style.width='100%';
+      $('status').textContent = `Listo. ${rows.filter(r=>r.cls==='p-ok').length} de ${media.length} imágenes optimizadas.`;
+      const pct = Math.max(0, (1 - outBlob.size/file.size)*100);
+      $('saving').innerHTML = (outBlob.size < file.size ? '−'+pct.toFixed(0)+'%' : '0%') + '<small>de peso</small>';
+      $('before').textContent = fmt(file.size); $('after').textContent = fmt(outBlob.size);
+      $('tb').innerHTML = rows.map(r=>`<tr><td>${escHtml(r.base)}</td><td><span class="pill ${r.cls}">${r.action}</span></td><td class="n">${fmt(r.before)}</td><td class="n">${fmt(r.after)}</td></tr>`).join('');
+      if(!media.length) $('status').textContent = 'Esta presentación no tiene fotos PNG o JPG.';
+      $('dlstatus').textContent=''; $('result').classList.remove('hidden');
+      $('result').scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(e){
+      console.error(e); $('status').innerHTML = '<span class="err">Error: '+escHtml(e.message||e)+'</span>';
+    }finally{ $('go').disabled = false; }
+  });
+
+  $('dl').addEventListener('click', () => {
+    if(!outBlob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(outBlob); a.download = outName;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    $('dlstatus').textContent = 'Descarga iniciada: ' + outName;
+  });
+})();
+</script>
+</body>
+</html>
